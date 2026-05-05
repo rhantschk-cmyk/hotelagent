@@ -1,0 +1,35 @@
+# CLI
+typer[all]>=0.9.0
+InquirerPy>=0.3.4
+rich>=13.0.0
+
+# LLM (OpenRouter via OpenAI-Bibliothek)
+openai>=1.0.0
+
+# GUI
+customtkinter>=5.2.0
+
+# Voice
+sounddevice>=0.4.6
+soundfile>=0.12.1
+pyttsx3>=2.90
+numpy>=1.24.0
+SpeechRecognition>=3.10.0
+
+# Gmail
+google-api-python-client>=2.100.0
+google-auth-oauthlib>=1.1.0
+google-auth-httplib2>=0.1.1
+
+# Dokumente
+PyPDF2>=3.0.0
+python-docx>=1.0.0
+
+# Web Scraping
+beautifulsoup4>=4.12.0
+requests>=2.31.0
+
+# Config & Utils
+pyyaml>=6.0
+python-dotenv>=1.0.0
+loguru>=0.7.0

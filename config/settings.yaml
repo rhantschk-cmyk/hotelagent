@@ -1,0 +1,24 @@
+agent:
+  knowledge_path: KNOWLEDGE.md
+  max_history: 50
+  system_prompt_path: config/system_prompt.txt
+email_processing:
+  min_template_year: 2025
+  template_label: Vorlagen
+gmail:
+  credentials_path: config/credentials.json
+  default_sender: null
+  token_path: config/token.json
+llm:
+  max_tokens: 2048
+  model: deepseek/deepseek-v4-flash
+  streaming: true
+  temperature: 0.7
+logging:
+  file: data/logs/hotelagent.log
+  level: INFO
+voice:
+  input_device: null
+  output_device: null
+  stt_engine: whisper_api
+  tts_engine: pyttsx3
