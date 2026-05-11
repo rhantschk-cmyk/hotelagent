@@ -227,6 +227,202 @@ Der CLI-Befehl `doctor` wächst mit dem Projekt — nach jeder Phase werden die 
 
 ---
 
+## Phase 10: Agent-Erstellung
+
+**Ziel:** Benutzer können eigene Agents erstellen, bearbeiten und verwalten. Agent-Dateien werden im Ordner `agents/` gespeichert.
+
+### Konzept
+
+Jeder Agent ist eine eigenständige Python-Datei in `agents/` mit eigenem System-Prompt, eigener Tool-Auswahl und optionaler Wissensdatenbank. Der bestehende `hotel_agent.py` bleibt als Standard-Agent erhalten. Neue Agents können über CLI oder GUI erstellt werden.
+
+### Agent-Struktur
+
+Jeder Agent wird als JSON-Konfiguration + Python-Klasse gespeichert:
+- `agents/<name>.json` — Konfiguration (Name, Beschreibung, System-Prompt, aktivierte Tools, Wissenspfad, LLM-Einstellungen)
+- `agents/<name>.py` — Wird automatisch generiert aus der JSON-Config, erbt von einer Basis-Agent-Klasse
+
+### Ablauf
+
+1. **Agent erstellen** — Name, Beschreibung, System-Prompt, Tools auswählen
+2. **Agent konfigurieren** — LLM-Modell, Temperatur, Max-Tokens, Wissensdatenbank zuweisen
+3. **Agent testen** — Direkt im Chat testen
+4. **Agent bearbeiten** — Bestehende Agents nachträglich anpassen
+5. **Agent löschen** — Agent-Dateien entfernen
+
+### Implementierung
+
+- [ ] `agents/base_agent.py` — Basis-Agent-Klasse (gemeinsame Logik aus `hotel_agent.py` extrahieren)
+- [ ] `scripts/agent_manager.py` — Agent-Verwaltung
+  - `create_agent(name, description, system_prompt, tools, ...)` — Agent-Config + Datei erstellen
+  - `list_agents()` — Alle Agents in `agents/` auflisten
+  - `load_agent(name)` — Agent laden und instanziieren
+  - `update_agent(name, ...)` — Agent-Config aktualisieren
+  - `delete_agent(name)` — Agent-Dateien löschen
+- [ ] `cli.py: agents` — CLI-Befehl mit InquirerPy-Menü
+  - Agent erstellen (interaktiver Wizard: Name → Beschreibung → System-Prompt → Tools wählen → LLM-Settings)
+  - Agents auflisten
+  - Agent starten (Chat mit ausgewähltem Agent)
+  - Agent bearbeiten
+  - Agent löschen
+- [ ] `gui.py` — Agent-Verwaltung in der GUI
+  - Agent-Auswahl in Sidebar (Dropdown oder Liste)
+  - "Neuer Agent"-Dialog (Formular mit allen Feldern)
+  - Agent-Einstellungen bearbeiten
+- [ ] `cli.py: chat` und GUI — Agent-Auswahl vor Chat-Start (Standard: hotel_agent)
+
+**Doctor prüft (ab jetzt):**
+- `agents/base_agent.py` existiert
+- `scripts/agent_manager.py` existiert
+- CLI-Befehl `agents` registriert
+- Agent erstellen/laden/löschen funktioniert
+- Mindestens `hotel_agent` ist als Agent verfügbar
+
+---
+
+## Phase 11: Automationen
+
+**Ziel:** Wiederkehrende Aufgaben automatisieren — zeitgesteuert oder event-basiert. Verwaltung über CLI und GUI.
+
+### Konzept
+
+Automationen sind konfigurierbare Tasks, die automatisch ausgeführt werden. Jede Automation hat einen Trigger (wann), eine Aktion (was) und optionale Bedingungen (wenn). Automationen werden als JSON in `data/automations/` gespeichert.
+
+### Automation-Typen
+
+1. **Zeitgesteuert (Cron):** Regelmäßige Ausführung nach Zeitplan
+   - z.B. "Jeden Morgen um 8:00 Uhr E-Mails prüfen"
+   - z.B. "Jeden Montag Website crawlen und Wissen aktualisieren"
+2. **Event-basiert:** Auslösung durch bestimmte Ereignisse
+   - z.B. "Bei neuer E-Mail automatisch klassifizieren"
+   - z.B. "Nach Dokument-Upload automatisch analysieren"
+3. **Manuell auslösbar:** Definierte Abläufe auf Knopfdruck starten
+   - z.B. "Morgen-Routine: E-Mails prüfen + Zusammenfassung erstellen"
+
+### Verfügbare Aktionen
+
+- `check_mails` — Posteingang prüfen und Entwürfe erstellen
+- `crawl_website` — Hotel-Website crawlen und Wissen aktualisieren
+- `send_report` — Tagesbericht per E-Mail-Entwurf erstellen
+- `backup_knowledge` — Wissensdatenbank sichern
+- `run_agent_task` — Einen bestimmten Agent mit einer Aufgabe beauftragen
+
+### Implementierung
+
+- [ ] `data/automations/` — Ordner für Automation-Configs (JSON)
+- [ ] `scripts/automation_manager.py` — Automation-Verwaltung
+  - `create_automation(name, trigger, action, config)` — Automation erstellen
+  - `list_automations()` — Alle Automationen auflisten
+  - `enable_automation(name)` / `disable_automation(name)` — An/Aus schalten
+  - `run_automation(name)` — Manuell auslösen
+  - `delete_automation(name)` — Automation löschen
+- [ ] `scripts/scheduler.py` — Zeitsteuerung
+  - Cron-ähnlicher Scheduler (z.B. via `schedule` oder `APScheduler`)
+  - Läuft als Hintergrundprozess oder wird per CLI gestartet
+  - Logging aller Ausführungen in `data/logs/`
+- [ ] `cli.py: automations` — CLI-Befehl mit InquirerPy-Menü
+  - Automation erstellen (Wizard: Name → Trigger-Typ → Zeitplan/Event → Aktion wählen → Parameter)
+  - Automationen auflisten (mit Status aktiv/inaktiv)
+  - Automation aktivieren/deaktivieren
+  - Automation manuell ausführen
+  - Automation löschen
+- [ ] `cli.py: scheduler` — Scheduler starten/stoppen
+- [ ] `gui.py` — Automationen in der GUI
+  - "Automationen"-Button in Sidebar
+  - Übersicht aller Automationen (Tabelle mit Name, Trigger, Status, letzte Ausführung)
+  - "Neue Automation"-Dialog
+  - Aktivieren/Deaktivieren per Toggle
+  - Manuelles Auslösen per Button
+  - Log-Ansicht der letzten Ausführungen
+
+**Doctor prüft (ab jetzt):**
+- `data/automations/` existiert
+- `scripts/automation_manager.py` existiert
+- `scripts/scheduler.py` existiert
+- CLI-Befehle `automations` und `scheduler` registriert
+- Automation erstellen/laden/löschen funktioniert
+
+---
+
+## Phase 12: Multi-Provider E-Mail & EXE-Build
+
+**Ziel:** Unterstuetzung fuer beliebige E-Mail-Provider (nicht nur Gmail) + ausfuehrbare EXE-Datei.
+
+### E-Mail-Provider-Abstraktion
+
+- [x] `scripts/email_provider.py` — Provider-Abstraktion
+  - `EmailProvider` abstrakte Basis-Klasse
+  - `GmailOAuthProvider` — Wrapper fuer bestehende Gmail OAuth2 API
+  - `ImapSmtpProvider` — Generischer IMAP/SMTP-Provider fuer alle anderen Anbieter
+  - `get_provider()` Factory-Funktion (liest Provider aus settings.yaml)
+  - 17 Provider-Presets mit vorkonfigurierten IMAP/SMTP-Einstellungen:
+    - Gmail, Outlook/Hotmail, Yahoo, GMX, Web.de, T-Online
+    - AOL, iCloud, Zoho, Fastmail, ProtonMail (Bridge)
+    - Mail.de, Posteo, Mailbox.org, IONOS (1&1), Strato, Freenet
+  - Benutzerdefinierte IMAP/SMTP-Konfiguration fuer beliebige Provider
+- [x] `scripts/email_processor.py` — Nutzt Provider-Abstraktion statt direkter Gmail-Imports
+- [x] `agents/base_agent.py` — Tools nutzen Provider-Abstraktion
+- [x] `cli.py: email-setup` — CLI-Befehl zum Einrichten des E-Mail-Providers
+- [x] `gui.py: EmailSetupDialog` — GUI-Dialog zur Provider-Konfiguration mit Verbindungstest
+- [x] `config/settings.yaml` — Neue email-Sektion mit Provider-Konfiguration
+
+### EXE-Build
+
+- [x] `build_exe.py` — PyInstaller Build-Script
+- [x] `gui_launcher.py` — Einstiegspunkt fuer die EXE (oeffnet direkt die GUI)
+- [x] PyInstaller in requirements.txt
+
+**Doctor prueft (ab jetzt):**
+- `scripts/email_provider.py` existiert und ist importierbar
+- Provider-Presets vorhanden (mindestens 10)
+- GmailOAuthProvider und ImapSmtpProvider erben von EmailProvider
+- get_provider() funktioniert
+- settings.yaml hat email-Sektion
+- CLI-Befehl `email-setup` registriert
+- email_processor nutzt Provider-Abstraktion
+- GUI hat EmailSetupDialog und Setup-Button
+- build_exe.py und gui_launcher.py existieren
+- PyInstaller importierbar
+
+---
+
+## Phase 13: Installer & Setup Wizard
+
+**Ziel:** Standalone-Installer-EXE die alles einrichtet + Erst-Einrichtungs-Assistent in der GUI.
+
+### Installer (`installer.py`)
+
+- [x] Standalone-Installer mit tkinter-GUI (dunkel, modern)
+- [x] Prueft Voraussetzungen (Python 3.10+, Git)
+- [x] Klont Repository von github.com/raphael-cmyk/hotelagent
+- [x] Installiert nach `C:/Users/<user>/.hotelagent`
+- [x] Erstellt Virtual Environment und installiert Abhaengigkeiten
+- [x] Erstellt `.env` Datei mit API-Key
+- [x] Baut GUI-EXE mit PyInstaller
+- [x] Erstellt Desktop-Verknuepfung
+- [x] Fuehrt Doctor-Check aus
+- [x] Startet die GUI fuer die Erst-Einrichtung
+
+### Installer-EXE Builder (`build_installer.py`)
+
+- [x] Kompiliert `installer.py` in standalone `HotelAgent_Installer.exe` (--onefile)
+- [x] Keine externen Abhaengigkeiten auf dem Zielsystem (ausser Python + Git)
+
+### Setup Wizard (`SetupWizardDialog` in `gui.py`)
+
+- [x] Wird automatisch beim ersten Start der GUI angezeigt
+- [x] Fragt nach OpenRouter API-Key
+- [x] Fragt nach E-Mail-Provider (alle 17+ Provider verfuegbar)
+- [x] Speichert Konfiguration in `.env` und `settings.yaml`
+- [x] Erstellt Marker-Datei `data/.setup_complete` (verhindert erneutes Anzeigen)
+- [x] Kann uebersprungen werden
+
+**Doctor prueft (ab jetzt):**
+- `installer.py`, `build_installer.py`, `gui_launcher.py` existieren
+- SetupWizardDialog und is_first_run in GUI vorhanden
+- installer.py syntaktisch korrekt und alle Schritte vorhanden
+
+---
+
 ## Technologie-Stack
 
 | Komponente | Bibliothek |

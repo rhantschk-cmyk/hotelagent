@@ -5,7 +5,7 @@ from rich.console import Console
 
 from scripts.config_manager import get_llm_config
 from scripts.llm import get_client
-from scripts.gmail import get_inbox_emails, get_templates, create_reply_draft
+from scripts.email_provider import get_provider
 
 console = Console()
 
@@ -164,11 +164,12 @@ def process_inbox() -> list[dict]:
         Liste von Ergebnis-Dicts mit Status pro E-Mail.
     """
     results = []
+    provider = get_provider()
 
     # 1. Posteingang lesen
     console.print("[dim]Lese Posteingang...[/dim]")
     try:
-        emails = get_inbox_emails(only_unread=True)
+        emails = provider.get_inbox_emails(only_unread=True)
     except Exception as e:
         console.print(f"[red]Fehler beim Lesen des Posteingangs: {e}[/red]")
         return results
@@ -182,7 +183,7 @@ def process_inbox() -> list[dict]:
     # 2. Vorlagen laden
     console.print("[dim]Lade Vorlagen...[/dim]")
     try:
-        templates = get_templates()
+        templates = provider.get_templates()
     except Exception as e:
         console.print(f"[red]Fehler beim Laden der Vorlagen: {e}[/red]")
         return results
@@ -261,7 +262,7 @@ def process_inbox() -> list[dict]:
             match = re.search(r"<([^>]+)>", from_addr)
             reply_to = match.group(1) if match else from_addr
 
-            draft = create_reply_draft(
+            draft = provider.create_reply_draft(
                 thread_id=email["thread_id"],
                 message_id=email["message_id"],
                 to=reply_to,

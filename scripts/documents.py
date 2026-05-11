@@ -88,7 +88,18 @@ def analyze_document(file_path: Path) -> str:
         max_tokens=2048,
     )
 
-    return response.choices[0].message.content
+    analysis = response.choices[0].message.content
+
+    # Preise automatisch extrahieren und in PRICES.md speichern
+    try:
+        from scripts.price_manager import extract_prices_from_text, save_to_prices
+        prices = extract_prices_from_text(text, source_name=file_path.name)
+        if prices.strip():
+            save_to_prices(f"Dokument: {file_path.name}", prices)
+    except Exception:
+        pass  # Preis-Extraktion ist optional, Fehler nicht kritisch
+
+    return analysis
 
 
 def save_to_knowledge(file_name: str, analysis: str) -> None:

@@ -2,6 +2,18 @@ agent:
   knowledge_path: KNOWLEDGE.md
   max_history: 50
   system_prompt_path: config/system_prompt.txt
+email:
+  provider: gmail_oauth
+  preset: ''
+  imap:
+    host: ''
+    port: 993
+    smtp_host: ''
+    smtp_port: 587
+    username: ''
+    password: ''
+    ssl: true
+    drafts_folder: Drafts
 email_processing:
   min_template_year: 2025
   template_label: Vorlagen

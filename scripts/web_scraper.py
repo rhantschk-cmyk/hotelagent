@@ -95,4 +95,18 @@ def analyze_website(pages: dict[str, str]) -> str:
         max_tokens=4096,
     )
 
-    return response.choices[0].message.content
+    analysis = response.choices[0].message.content
+
+    # Preise automatisch extrahieren und in PRICES.md speichern
+    try:
+        from scripts.price_manager import extract_prices_from_text, save_to_prices
+        console.print("[dim]Extrahiere Preise...[/dim]")
+        prices = extract_prices_from_text(combined, source_name=f"Website: {list(pages.keys())[0] if pages else 'unbekannt'}")
+        if prices.strip():
+            source = list(pages.keys())[0].split("/")[2] if pages else "website"
+            save_to_prices(f"Website: {source}", prices)
+            console.print("[green]Preise in PRICES.md gespeichert.[/green]")
+    except Exception as e:
+        console.print(f"[yellow]Preis-Extraktion fehlgeschlagen: {e}[/yellow]")
+
+    return analysis

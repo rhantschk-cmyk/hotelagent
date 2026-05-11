@@ -33,7 +33,7 @@ def check_phase_1() -> tuple[int, int]:
     # Ordner prüfen
     dirs = [
         "scripts", "config", "agents", "data",
-        "data/conversations", "data/uploads", "data/logs",
+        "data/conversations", "data/uploads", "data/logs", "data/automations",
     ]
     for d in dirs:
         total += 1
@@ -357,6 +357,37 @@ def check_phase_7() -> tuple[int, int]:
     except Exception as e:
         _check(f"Text-Extraktion funktioniert ({e})", False)
 
+    # --- Preis-System ---
+
+    # PRICES.md existiert?
+    total += 1
+    if _check("Datei PRICES.md", (PROJECT_ROOT / "PRICES.md").is_file()):
+        passed += 1
+
+    # price_manager.py existiert?
+    total += 1
+    if _check("Datei scripts/price_manager.py", (PROJECT_ROOT / "scripts" / "price_manager.py").is_file()):
+        passed += 1
+
+    # price_manager importierbar?
+    total += 1
+    try:
+        from scripts.price_manager import extract_prices_from_text, save_to_prices, calculate_price, load_prices
+        if _check("price_manager importierbar", True):
+            passed += 1
+    except Exception as e:
+        _check(f"price_manager importierbar ({e})", False)
+
+    # Agent-Tool 'calculate_price' registriert?
+    total += 1
+    try:
+        from agents.hotel_agent import TOOLS
+        tool_names = [t["function"]["name"] for t in TOOLS]
+        if _check("Agent-Tool 'calculate_price' registriert", "calculate_price" in tool_names):
+            passed += 1
+    except Exception:
+        _check("Agent-Tool 'calculate_price' registriert", False)
+
     return passed, total
 
 
@@ -519,6 +550,427 @@ def check_phase_9() -> tuple[int, int]:
     return passed, total
 
 
+def check_phase_10() -> tuple[int, int]:
+    """Phase 10: Agent-Erstellung."""
+    console.print("\n[bold cyan]Phase 10: Agent-Erstellung[/bold cyan]")
+    passed = 0
+    total = 0
+
+    # base_agent.py existiert?
+    total += 1
+    if _check("Datei agents/base_agent.py", (PROJECT_ROOT / "agents" / "base_agent.py").is_file()):
+        passed += 1
+
+    # agent_manager.py existiert?
+    total += 1
+    if _check("Datei scripts/agent_manager.py", (PROJECT_ROOT / "scripts" / "agent_manager.py").is_file()):
+        passed += 1
+
+    # BaseAgent importierbar?
+    total += 1
+    try:
+        from agents.base_agent import BaseAgent, ALL_TOOLS
+        if _check("BaseAgent importierbar", True):
+            passed += 1
+    except Exception as e:
+        _check(f"BaseAgent importierbar ({e})", False)
+
+    # agent_manager importierbar?
+    total += 1
+    try:
+        from scripts.agent_manager import create_agent, list_agents, load_agent, delete_agent
+        if _check("agent_manager importierbar", True):
+            passed += 1
+    except Exception as e:
+        _check(f"agent_manager importierbar ({e})", False)
+
+    # CLI-Befehl 'agents' registriert?
+    total += 1
+    from cli import app, EXPECTED_COMMANDS
+    registered = [cmd.name or cmd.callback.__name__.replace("_", "-") for cmd in app.registered_commands]
+    if _check("Befehl 'agents' registriert", "agents" in registered):
+        passed += 1
+
+    # Agent CRUD funktioniert?
+    total += 1
+    try:
+        from scripts.agent_manager import create_agent, get_agent_config_by_name, delete_agent
+        test_name = "__doctor_test_agent__"
+        # Aufraeumen falls vorhanden
+        try:
+            delete_agent(test_name)
+        except Exception:
+            pass
+
+        cfg = create_agent(
+            name=test_name,
+            description="Test-Agent fuer Doctor",
+            system_prompt="Test",
+            tool_names=["search_knowledge"],
+        )
+        loaded = get_agent_config_by_name(test_name)
+        delete_agent(test_name)
+
+        if _check("Agent erstellen/laden/loeschen", loaded is not None and loaded["name"] == test_name):
+            passed += 1
+    except Exception as e:
+        _check(f"Agent erstellen/laden/loeschen ({e})", False)
+
+    # HotelAgent erbt von BaseAgent?
+    total += 1
+    try:
+        from agents.hotel_agent import HotelAgent
+        from agents.base_agent import BaseAgent
+        if _check("HotelAgent erbt von BaseAgent", issubclass(HotelAgent, BaseAgent)):
+            passed += 1
+    except Exception as e:
+        _check(f"HotelAgent erbt von BaseAgent ({e})", False)
+
+    # GUI hat NewAgentDialog?
+    total += 1
+    gui_path = PROJECT_ROOT / "gui.py"
+    if gui_path.is_file():
+        content = gui_path.read_text(encoding="utf-8")
+        if _check("GUI: NewAgentDialog implementiert", "class NewAgentDialog" in content):
+            passed += 1
+    else:
+        _check("GUI: NewAgentDialog implementiert", False)
+
+    # GUI hat Agent-Selector?
+    total += 1
+    if gui_path.is_file():
+        content = gui_path.read_text(encoding="utf-8")
+        if _check("GUI: Agent-Selector vorhanden", "agent_selector" in content):
+            passed += 1
+    else:
+        _check("GUI: Agent-Selector vorhanden", False)
+
+    return passed, total
+
+
+def check_phase_11() -> tuple[int, int]:
+    """Phase 11: Automationen."""
+    console.print("\n[bold cyan]Phase 11: Automationen[/bold cyan]")
+    passed = 0
+    total = 0
+
+    # data/automations/ existiert?
+    total += 1
+    if _check("Ordner data/automations/", (PROJECT_ROOT / "data" / "automations").is_dir()):
+        passed += 1
+
+    # automation_manager.py existiert?
+    total += 1
+    if _check("Datei scripts/automation_manager.py", (PROJECT_ROOT / "scripts" / "automation_manager.py").is_file()):
+        passed += 1
+
+    # scheduler.py existiert?
+    total += 1
+    if _check("Datei scripts/scheduler.py", (PROJECT_ROOT / "scripts" / "scheduler.py").is_file()):
+        passed += 1
+
+    # automation_manager importierbar?
+    total += 1
+    try:
+        from scripts.automation_manager import (
+            create_automation, list_automations, run_automation,
+            enable_automation, disable_automation, delete_automation,
+            AVAILABLE_ACTIONS, TRIGGER_TYPES,
+        )
+        if _check("automation_manager importierbar", True):
+            passed += 1
+    except Exception as e:
+        _check(f"automation_manager importierbar ({e})", False)
+
+    # scheduler importierbar?
+    total += 1
+    try:
+        from scripts.scheduler import start, stop, load_scheduled_jobs
+        if _check("scheduler importierbar", True):
+            passed += 1
+    except Exception as e:
+        _check(f"scheduler importierbar ({e})", False)
+
+    # schedule Bibliothek importierbar?
+    total += 1
+    try:
+        importlib.import_module("schedule")
+        if _check("schedule importierbar", True):
+            passed += 1
+    except ImportError:
+        _check("schedule importierbar", False)
+
+    # CLI-Befehle registriert?
+    from cli import app
+    registered = [cmd.name or cmd.callback.__name__.replace("_", "-") for cmd in app.registered_commands]
+    for cmd_name in ["automations", "scheduler"]:
+        total += 1
+        if _check(f"Befehl '{cmd_name}' registriert", cmd_name in registered):
+            passed += 1
+
+    # Automation CRUD funktioniert?
+    total += 1
+    try:
+        from scripts.automation_manager import create_automation, get_automation, delete_automation
+        test_name = "__doctor_test_auto__"
+        try:
+            delete_automation(test_name)
+        except Exception:
+            pass
+
+        cfg = create_automation(
+            name=test_name,
+            description="Test-Automation fuer Doctor",
+            action="backup_knowledge",
+            trigger_type="manual",
+        )
+        loaded = get_automation(test_name)
+        delete_automation(test_name)
+
+        if _check("Automation erstellen/laden/loeschen", loaded is not None and loaded["name"] == test_name):
+            passed += 1
+    except Exception as e:
+        _check(f"Automation erstellen/laden/loeschen ({e})", False)
+
+    # Verfuegbare Aktionen vorhanden?
+    total += 1
+    try:
+        from scripts.automation_manager import AVAILABLE_ACTIONS
+        expected = ["check_mails", "crawl_website", "send_report", "backup_knowledge", "run_agent_task"]
+        missing = [a for a in expected if a not in AVAILABLE_ACTIONS]
+        if _check(f"Alle Aktionen registriert ({len(expected) - len(missing)}/{len(expected)})", len(missing) == 0):
+            passed += 1
+        if missing:
+            console.print(f"    [dim]Fehlend: {', '.join(missing)}[/dim]")
+    except Exception:
+        _check("Alle Aktionen registriert", False)
+
+    # GUI hat AutomationsDialog?
+    total += 1
+    gui_path = PROJECT_ROOT / "gui.py"
+    if gui_path.is_file():
+        content = gui_path.read_text(encoding="utf-8")
+        if _check("GUI: AutomationsDialog implementiert", "class AutomationsDialog" in content):
+            passed += 1
+    else:
+        _check("GUI: AutomationsDialog implementiert", False)
+
+    # GUI hat Automationen-Button?
+    total += 1
+    if gui_path.is_file():
+        content = gui_path.read_text(encoding="utf-8")
+        if _check("GUI: Automationen-Button vorhanden", "automations_btn" in content):
+            passed += 1
+    else:
+        _check("GUI: Automationen-Button vorhanden", False)
+
+    return passed, total
+
+
+def check_phase_12() -> tuple[int, int]:
+    """Phase 12: Multi-Provider E-Mail & EXE-Build."""
+    console.print("\n[bold cyan]Phase 12: Multi-Provider E-Mail & EXE-Build[/bold cyan]")
+    passed = 0
+    total = 0
+
+    # email_provider.py existiert?
+    total += 1
+    if _check("Datei scripts/email_provider.py", (PROJECT_ROOT / "scripts" / "email_provider.py").is_file()):
+        passed += 1
+
+    # email_provider importierbar?
+    total += 1
+    try:
+        from scripts.email_provider import (
+            EmailProvider, GmailOAuthProvider, ImapSmtpProvider,
+            get_provider, KNOWN_PROVIDERS,
+        )
+        if _check("email_provider importierbar", True):
+            passed += 1
+    except Exception as e:
+        _check(f"email_provider importierbar ({e})", False)
+
+    # KNOWN_PROVIDERS hat genug Eintraege?
+    total += 1
+    try:
+        from scripts.email_provider import KNOWN_PROVIDERS
+        count = len(KNOWN_PROVIDERS)
+        if _check(f"Provider-Presets vorhanden ({count} Provider)", count >= 10):
+            passed += 1
+    except Exception:
+        _check("Provider-Presets vorhanden", False)
+
+    # GmailOAuthProvider ist EmailProvider?
+    total += 1
+    try:
+        from scripts.email_provider import GmailOAuthProvider, EmailProvider
+        if _check("GmailOAuthProvider erbt von EmailProvider", issubclass(GmailOAuthProvider, EmailProvider)):
+            passed += 1
+    except Exception:
+        _check("GmailOAuthProvider erbt von EmailProvider", False)
+
+    # ImapSmtpProvider ist EmailProvider?
+    total += 1
+    try:
+        from scripts.email_provider import ImapSmtpProvider, EmailProvider
+        if _check("ImapSmtpProvider erbt von EmailProvider", issubclass(ImapSmtpProvider, EmailProvider)):
+            passed += 1
+    except Exception:
+        _check("ImapSmtpProvider erbt von EmailProvider", False)
+
+    # get_provider() funktioniert?
+    total += 1
+    try:
+        from scripts.email_provider import get_provider, EmailProvider
+        provider = get_provider()
+        if _check("get_provider() liefert EmailProvider", isinstance(provider, EmailProvider)):
+            passed += 1
+    except Exception as e:
+        _check(f"get_provider() funktioniert ({e})", False)
+
+    # settings.yaml hat email-Sektion?
+    total += 1
+    try:
+        from scripts.config_manager import load_config
+        cfg = load_config()
+        email_cfg = cfg.get("email", {})
+        if _check("settings.yaml hat email-Sektion", bool(email_cfg) and "provider" in email_cfg):
+            passed += 1
+    except Exception:
+        _check("settings.yaml hat email-Sektion", False)
+
+    # CLI-Befehl email-setup registriert?
+    total += 1
+    from cli import app, EXPECTED_COMMANDS
+    registered = [cmd.name or cmd.callback.__name__.replace("_", "-") for cmd in app.registered_commands]
+    if _check("Befehl 'email-setup' registriert", "email-setup" in registered):
+        passed += 1
+
+    # email_processor nutzt Provider?
+    total += 1
+    ep_path = PROJECT_ROOT / "scripts" / "email_processor.py"
+    if ep_path.is_file():
+        content = ep_path.read_text(encoding="utf-8")
+        if _check("email_processor nutzt email_provider", "get_provider" in content):
+            passed += 1
+    else:
+        _check("email_processor nutzt email_provider", False)
+
+    # GUI hat EmailSetupDialog?
+    total += 1
+    gui_path = PROJECT_ROOT / "gui.py"
+    if gui_path.is_file():
+        content = gui_path.read_text(encoding="utf-8")
+        if _check("GUI: EmailSetupDialog implementiert", "class EmailSetupDialog" in content):
+            passed += 1
+    else:
+        _check("GUI: EmailSetupDialog implementiert", False)
+
+    # GUI hat email_setup_btn?
+    total += 1
+    if gui_path.is_file():
+        content = gui_path.read_text(encoding="utf-8")
+        if _check("GUI: E-Mail-Setup-Button vorhanden", "email_setup_btn" in content):
+            passed += 1
+    else:
+        _check("GUI: E-Mail-Setup-Button vorhanden", False)
+
+    # --- EXE-Build ---
+
+    # build_exe.py existiert?
+    total += 1
+    if _check("Datei build_exe.py", (PROJECT_ROOT / "build_exe.py").is_file()):
+        passed += 1
+
+    # gui_launcher.py existiert?
+    total += 1
+    if _check("Datei gui_launcher.py", (PROJECT_ROOT / "gui_launcher.py").is_file()):
+        passed += 1
+
+    # PyInstaller importierbar?
+    total += 1
+    try:
+        importlib.import_module("PyInstaller")
+        if _check("PyInstaller importierbar", True):
+            passed += 1
+    except ImportError:
+        _check("PyInstaller importierbar (pip install pyinstaller)", False)
+
+    return passed, total
+
+
+def check_phase_13() -> tuple[int, int]:
+    """Phase 13: Installer & Setup Wizard."""
+    console.print("\n[bold cyan]Phase 13: Installer & Setup Wizard[/bold cyan]")
+    passed = 0
+    total = 0
+
+    # installer.py existiert?
+    total += 1
+    if _check("Datei installer.py", (PROJECT_ROOT / "installer.py").is_file()):
+        passed += 1
+
+    # build_installer.py existiert?
+    total += 1
+    if _check("Datei build_installer.py", (PROJECT_ROOT / "build_installer.py").is_file()):
+        passed += 1
+
+    # gui_launcher.py existiert?
+    total += 1
+    if _check("Datei gui_launcher.py", (PROJECT_ROOT / "gui_launcher.py").is_file()):
+        passed += 1
+
+    # SetupWizardDialog in GUI?
+    total += 1
+    gui_path = PROJECT_ROOT / "gui.py"
+    if gui_path.is_file():
+        content = gui_path.read_text(encoding="utf-8")
+        if _check("GUI: SetupWizardDialog implementiert", "class SetupWizardDialog" in content):
+            passed += 1
+    else:
+        _check("GUI: SetupWizardDialog implementiert", False)
+
+    # is_first_run in GUI?
+    total += 1
+    if gui_path.is_file():
+        content = gui_path.read_text(encoding="utf-8")
+        if _check("GUI: Erst-Einrichtungs-Pruefung vorhanden", "is_first_run" in content):
+            passed += 1
+    else:
+        _check("GUI: Erst-Einrichtungs-Pruefung vorhanden", False)
+
+    # Installer importierbar (grundlegende Syntax)?
+    total += 1
+    try:
+        # Nur pruefen ob die Datei parsbar ist
+        installer_path = PROJECT_ROOT / "installer.py"
+        if installer_path.is_file():
+            compile(installer_path.read_text(encoding="utf-8"), str(installer_path), "exec")
+            if _check("installer.py ist syntaktisch korrekt", True):
+                passed += 1
+        else:
+            _check("installer.py ist syntaktisch korrekt", False)
+    except SyntaxError as e:
+        _check(f"installer.py Syntax-Fehler: {e}", False)
+
+    # Installer hat alle Schritte?
+    total += 1
+    if installer_path.is_file():
+        content = installer_path.read_text(encoding="utf-8")
+        steps = ["_step_clone_repo", "_step_create_venv", "_step_install_deps",
+                 "_step_build_exe", "_step_create_shortcut", "_step_launch_setup"]
+        missing = [s for s in steps if s not in content]
+        if _check(f"Installer: Alle Schritte vorhanden ({len(steps) - len(missing)}/{len(steps)})",
+                  len(missing) == 0):
+            passed += 1
+        if missing:
+            console.print(f"    [dim]Fehlend: {', '.join(missing)}[/dim]")
+    else:
+        _check("Installer: Alle Schritte vorhanden", False)
+
+    return passed, total
+
+
 # Alle Phasen in Reihenfolge — wird mit jeder Phase erweitert
 ALL_PHASES = [
     check_phase_1,
@@ -530,6 +982,10 @@ ALL_PHASES = [
     check_phase_7,
     check_phase_8,
     check_phase_9,
+    check_phase_10,
+    check_phase_11,
+    check_phase_12,
+    check_phase_13,
 ]
 
 
