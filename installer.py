@@ -179,15 +179,24 @@ class InstallerApp(tk.Tk):
 
         disclaimer_text = tk.Text(disclaimer_frame, font=("Segoe UI", 11),
                                    bg="#0f3460", fg="#e0e0e0", wrap="word",
-                                   relief="flat", bd=12, highlightthickness=0)
+                                   relief="flat", bd=12, highlightthickness=0,
+                                   height=10)
         disclaimer_text.insert("1.0", DISCLAIMER_TEXT)
         disclaimer_text.configure(state="disabled")
         disclaimer_text.pack(fill="both", expand=True)
 
+        scrollbar = tk.Scrollbar(disclaimer_frame, command=disclaimer_text.yview)
+        scrollbar.pack(side="right", fill="y")
+        disclaimer_text.configure(yscrollcommand=scrollbar.set)
+
+        # Buttons (pack bottom first so they are always visible)
+        btn_frame = tk.Frame(content, bg="#1a1a2e")
+        btn_frame.pack(side="bottom", fill="x")
+
         # Checkbox
         self._accept_var = tk.BooleanVar(value=False)
         check_frame = tk.Frame(content, bg="#1a1a2e")
-        check_frame.pack(fill="x", pady=(0, 12))
+        check_frame.pack(side="bottom", fill="x", pady=(0, 12))
 
         check = tk.Checkbutton(check_frame, text="Ich habe den Haftungsausschluss gelesen und akzeptiere ihn.",
                                 variable=self._accept_var,
@@ -196,10 +205,6 @@ class InstallerApp(tk.Tk):
                                 activeforeground="white",
                                 command=self._update_accept_btn)
         check.pack(anchor="w")
-
-        # Buttons
-        btn_frame = tk.Frame(content, bg="#1a1a2e")
-        btn_frame.pack(fill="x")
 
         tk.Button(btn_frame, text="Ablehnen", command=self.destroy,
                    font=("Segoe UI", 11), bg="#374151", fg="white",
