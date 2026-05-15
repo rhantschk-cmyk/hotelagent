@@ -14,6 +14,8 @@ console = Console()
 
 EXPECTED_COMMANDS = ["doctor", "start", "config", "gui", "memory", "chat", "voice", "upload", "check-web", "check-mails", "email-setup", "agents", "automations", "scheduler"]
 
+DISCLAIMER = "Hinweis: KI-generierte Antworten koennen fehlerhaft sein. Keine Haftung durch den Entwickler. Nutzung auf eigene Verantwortung."
+
 
 @app.command()
 def doctor():
@@ -142,6 +144,7 @@ def chat():
     agent = HotelAgent(conversation_id=conversation_id)
 
     console.print("[bold cyan]HotelAgent Chat[/bold cyan] (/exit zum Beenden)")
+    console.print(f"[dim]{DISCLAIMER}[/dim]")
     console.print()
 
     while True:
@@ -179,6 +182,7 @@ def voice():
     tts = TextToSpeech()
 
     console.print("[bold cyan]HotelAgent Voice-Chat[/bold cyan]")
+    console.print(f"[dim]{DISCLAIMER}[/dim]")
     console.print("Druecke [bold]Enter[/bold] um Aufnahme zu starten/stoppen. /exit zum Beenden.\n")
 
     while True:

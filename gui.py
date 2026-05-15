@@ -1108,6 +1108,17 @@ class HotelAgentGUI(ctk.CTk):
                                         command=self._toggle_voice)
         self.voice_btn.grid(row=0, column=2)
 
+        # Disclaimer-Leiste
+        disclaimer_bar = ctk.CTkLabel(
+            main_frame,
+            text="Hinweis: KI-generierte Antworten koennen fehlerhaft sein. Keine Haftung durch den Entwickler. Nutzung auf eigene Verantwortung.",
+            font=ctk.CTkFont(size=10),
+            text_color="gray",
+            anchor="center",
+            height=20,
+        )
+        disclaimer_bar.grid(row=3, column=0, sticky="we", padx=8, pady=(0, 4))
+
     # -----------------------------------------------------------------------
     # Agent
     # -----------------------------------------------------------------------

@@ -33,6 +33,19 @@ DEFAULT_INSTALL_DIR = Path.home() / ".hotelagent"
 APP_NAME = "HotelAgent"
 VENV_DIR_NAME = "venv"
 
+DISCLAIMER_TEXT = (
+    "HAFTUNGSAUSSCHLUSS\n\n"
+    "Dieser Assistent nutzt kuenstliche Intelligenz (KI). "
+    "Die generierten Antworten koennen fehlerhaft, unvollstaendig "
+    "oder veraltet sein.\n\n"
+    "Der Entwickler uebernimmt keinerlei Haftung fuer die "
+    "Richtigkeit, Vollstaendigkeit oder Aktualitaet der "
+    "KI-generierten Inhalte. Die Nutzung erfolgt ausschliesslich "
+    "auf eigene Verantwortung des Anwenders.\n\n"
+    "Durch die Installation und Nutzung dieser Software erklaeren "
+    "Sie sich mit diesen Bedingungen einverstanden."
+)
+
 
 # ---------------------------------------------------------------------------
 # Hilfsfunktionen
@@ -140,7 +153,74 @@ class InstallerApp(tk.Tk):
         self._installing = False
         self._api_key = ""
 
-        self._build_welcome()
+        self._show_disclaimer()
+
+    # -------------------------------------------------------------------
+    # Disclaimer Screen
+    # -------------------------------------------------------------------
+
+    def _show_disclaimer(self):
+        """Haftungsausschluss anzeigen — muss akzeptiert werden."""
+        self._clear()
+
+        header = tk.Frame(self, bg="#16213e", height=80)
+        header.pack(fill="x")
+        header.pack_propagate(False)
+
+        tk.Label(header, text="Haftungsausschluss",
+                 font=("Segoe UI", 22, "bold"), fg="#e94560", bg="#16213e").pack(pady=20)
+
+        content = tk.Frame(self, bg="#1a1a2e", padx=40, pady=20)
+        content.pack(fill="both", expand=True)
+
+        # Disclaimer-Text in einem scrollbaren Textfeld
+        disclaimer_frame = tk.Frame(content, bg="#0f3460", bd=2, relief="flat")
+        disclaimer_frame.pack(fill="both", expand=True, pady=(0, 16))
+
+        disclaimer_text = tk.Text(disclaimer_frame, font=("Segoe UI", 11),
+                                   bg="#0f3460", fg="#e0e0e0", wrap="word",
+                                   relief="flat", bd=12, highlightthickness=0)
+        disclaimer_text.insert("1.0", DISCLAIMER_TEXT)
+        disclaimer_text.configure(state="disabled")
+        disclaimer_text.pack(fill="both", expand=True)
+
+        # Checkbox
+        self._accept_var = tk.BooleanVar(value=False)
+        check_frame = tk.Frame(content, bg="#1a1a2e")
+        check_frame.pack(fill="x", pady=(0, 12))
+
+        check = tk.Checkbutton(check_frame, text="Ich habe den Haftungsausschluss gelesen und akzeptiere ihn.",
+                                variable=self._accept_var,
+                                font=("Segoe UI", 11), fg="white", bg="#1a1a2e",
+                                selectcolor="#0f3460", activebackground="#1a1a2e",
+                                activeforeground="white",
+                                command=self._update_accept_btn)
+        check.pack(anchor="w")
+
+        # Buttons
+        btn_frame = tk.Frame(content, bg="#1a1a2e")
+        btn_frame.pack(fill="x")
+
+        tk.Button(btn_frame, text="Ablehnen", command=self.destroy,
+                   font=("Segoe UI", 11), bg="#374151", fg="white",
+                   relief="flat", padx=20, pady=8, cursor="hand2").pack(side="left")
+
+        self._accept_btn = tk.Button(btn_frame, text="Akzeptieren  →",
+                                      command=self._build_welcome,
+                                      font=("Segoe UI", 11, "bold"),
+                                      bg="#606060", fg="#909090",
+                                      relief="flat", padx=24, pady=8,
+                                      state="disabled")
+        self._accept_btn.pack(side="right")
+
+    def _update_accept_btn(self):
+        """Akzeptieren-Button aktivieren/deaktivieren."""
+        if self._accept_var.get():
+            self._accept_btn.configure(state="normal", bg="#e94560", fg="white",
+                                        cursor="hand2", activebackground="#c73e54")
+        else:
+            self._accept_btn.configure(state="disabled", bg="#606060", fg="#909090",
+                                        cursor="")
 
     # -------------------------------------------------------------------
     # Welcome Screen
