@@ -357,6 +357,31 @@ def check_phase_7() -> tuple[int, int]:
     except Exception as e:
         _check(f"Text-Extraktion funktioniert ({e})", False)
 
+    # --- Web-Scraper ---
+
+    # web_scraper.py existiert?
+    total += 1
+    if _check("Datei scripts/web_scraper.py", (PROJECT_ROOT / "scripts" / "web_scraper.py").is_file()):
+        passed += 1
+
+    # web_scraper importierbar?
+    total += 1
+    try:
+        from scripts.web_scraper import crawl_site, analyze_website
+        if _check("web_scraper importierbar", callable(crawl_site)):
+            passed += 1
+    except Exception as e:
+        _check(f"web_scraper importierbar ({e})", False)
+
+    # beautifulsoup4 importierbar?
+    total += 1
+    try:
+        importlib.import_module("bs4")
+        if _check("beautifulsoup4 importierbar", True):
+            passed += 1
+    except ImportError:
+        _check("beautifulsoup4 importierbar", False)
+
     # --- Preis-System ---
 
     # PRICES.md existiert?
@@ -475,6 +500,24 @@ def check_phase_8() -> tuple[int, int]:
             passed += 1
     else:
         _check("GmailDraftDialog implementiert", False)
+
+    # CrawlWebsiteDialog vorhanden?
+    total += 1
+    if gui_path.is_file():
+        content = gui_path.read_text(encoding="utf-8")
+        if _check("CrawlWebsiteDialog implementiert", "class CrawlWebsiteDialog" in content):
+            passed += 1
+    else:
+        _check("CrawlWebsiteDialog implementiert", False)
+
+    # GUI hat crawl_btn?
+    total += 1
+    if gui_path.is_file():
+        content = gui_path.read_text(encoding="utf-8")
+        if _check("GUI: Website-Crawl-Button vorhanden", "crawl_btn" in content):
+            passed += 1
+    else:
+        _check("GUI: Website-Crawl-Button vorhanden", False)
 
     return passed, total
 
