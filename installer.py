@@ -28,7 +28,7 @@ from pathlib import Path
 # Konstanten
 # ---------------------------------------------------------------------------
 
-REPO_URL = "https://github.com/raphael-cmyk/hotelagent.git"
+REPO_URL = "https://github.com/rhantschk-cmyk/hotelagent.git"
 DEFAULT_INSTALL_DIR = Path.home() / ".hotelagent"
 APP_NAME = "HotelAgent"
 VENV_DIR_NAME = "venv"
