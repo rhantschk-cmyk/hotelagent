@@ -134,15 +134,27 @@ def check_phase_3() -> tuple[int, int]:
         if _check(f"LLM-Config: '{field}' vorhanden", field in llm_cfg):
             passed += 1
 
+    # Provider konfiguriert?
+    total += 1
+    try:
+        from scripts.llm import get_provider_name, PROVIDERS
+        provider = get_provider_name()
+        if _check(f"LLM-Provider konfiguriert: {provider}", provider in PROVIDERS):
+            passed += 1
+    except Exception:
+        _check("LLM-Provider konfiguriert", False)
+        provider = "openrouter"
+
     # API-Key gesetzt?
     import os
     total += 1
-    api_key = os.getenv("OPENROUTER_API_KEY")
+    env_key = PROVIDERS.get(provider, {}).get("env_key", "OPENROUTER_API_KEY")
+    api_key = os.getenv(env_key)
     if api_key:
-        if _check("OPENROUTER_API_KEY gesetzt", True):
+        if _check(f"{env_key} gesetzt", True):
             passed += 1
     else:
-        _check("OPENROUTER_API_KEY gesetzt (in .env eintragen!)", False)
+        _check(f"{env_key} gesetzt (in .env eintragen!)", False)
 
     # LLM-Client instanziierbar? (nur wenn Key vorhanden)
     total += 1
@@ -156,6 +168,15 @@ def check_phase_3() -> tuple[int, int]:
             _check(f"LLM-Client instanziierbar ({e})", False)
     else:
         _check("LLM-Client instanziierbar (uebersprungen, kein API-Key)", False)
+
+    # anthropic importierbar?
+    total += 1
+    try:
+        importlib.import_module("anthropic")
+        if _check("anthropic importierbar", True):
+            passed += 1
+    except ImportError:
+        _check("anthropic importierbar (pip install anthropic)", False)
 
     return passed, total
 

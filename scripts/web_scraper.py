@@ -8,8 +8,7 @@ from bs4 import BeautifulSoup
 from rich.console import Console
 
 from scripts.documents import save_to_knowledge
-from scripts.llm import get_client
-from scripts.config_manager import get_llm_config
+from scripts.llm import llm_call
 
 console = Console()
 
@@ -72,11 +71,7 @@ def analyze_website(pages: dict[str, str]) -> str:
     if len(combined) > max_chars:
         combined = combined[:max_chars] + "\n\n[... gekuerzt ...]"
 
-    client = get_client()
-    config = get_llm_config()
-
-    response = client.chat.completions.create(
-        model=config.get("model", "openai/gpt-4o"),
+    analysis = llm_call(
         messages=[
             {"role": "system", "content": (
                 "Du analysierst die Website eines Hotels. Erstelle eine umfassende, strukturierte Zusammenfassung mit:\n"
@@ -94,8 +89,6 @@ def analyze_website(pages: dict[str, str]) -> str:
         temperature=0.3,
         max_tokens=4096,
     )
-
-    analysis = response.choices[0].message.content
 
     # Preise automatisch extrahieren und in PRICES.md speichern
     try:

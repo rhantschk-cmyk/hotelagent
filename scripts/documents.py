@@ -57,8 +57,7 @@ def upload_file(source_path: str) -> Path:
 
 def analyze_document(file_path: Path) -> str:
     """Dokument durch LLM analysieren lassen."""
-    from scripts.llm import get_client
-    from scripts.config_manager import get_llm_config
+    from scripts.llm import llm_call
 
     text = extract_text(file_path)
     if not text.strip():
@@ -69,11 +68,7 @@ def analyze_document(file_path: Path) -> str:
     if len(text) > max_chars:
         text = text[:max_chars] + "\n\n[... gekuerzt ...]"
 
-    client = get_client()
-    config = get_llm_config()
-
-    response = client.chat.completions.create(
-        model=config.get("model", "openai/gpt-4o"),
+    analysis = llm_call(
         messages=[
             {"role": "system", "content": (
                 "Analysiere das folgende Dokument. Erstelle eine strukturierte Zusammenfassung mit:\n"
@@ -88,16 +83,19 @@ def analyze_document(file_path: Path) -> str:
         max_tokens=2048,
     )
 
-    analysis = response.choices[0].message.content
-
     # Preise automatisch extrahieren und in PRICES.md speichern
+    prices_saved = False
     try:
         from scripts.price_manager import extract_prices_from_text, save_to_prices
         prices = extract_prices_from_text(text, source_name=file_path.name)
         if prices.strip():
             save_to_prices(f"Dokument: {file_path.name}", prices)
+            prices_saved = True
     except Exception:
         pass  # Preis-Extraktion ist optional, Fehler nicht kritisch
+
+    if prices_saved:
+        analysis += "\n\n---\nPreise wurden automatisch in PRICES.md gespeichert."
 
     return analysis
 

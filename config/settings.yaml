@@ -22,6 +22,7 @@ gmail:
   default_sender: null
   token_path: config/token.json
 llm:
+  provider: openrouter
   max_tokens: 2048
   model: deepseek/deepseek-v4-flash
   streaming: true

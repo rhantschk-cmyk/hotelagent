@@ -103,17 +103,20 @@ class ChatBubble(ctk.CTkFrame):
 # ---------------------------------------------------------------------------
 
 class SettingsDialog(ctk.CTkToplevel):
-    """Einstellungen-Dialog: Modell, Temperatur, Theme, Audio."""
+    """Einstellungen-Dialog: Provider, Modell, Temperatur, Theme."""
 
     def __init__(self, master, on_save=None):
         super().__init__(master)
         self.title("Einstellungen")
-        self.geometry("500x540")
+        self.geometry("520x620")
         self.resizable(False, False)
         self.grab_set()
 
         self._on_save = on_save
         self._cfg = load_config()
+
+        from scripts.llm import PROVIDERS
+        self._providers = PROVIDERS
 
         # Header
         header = ctk.CTkFrame(self, fg_color=COLORS["bg_card"], corner_radius=0, height=60)
@@ -126,19 +129,83 @@ class SettingsDialog(ctk.CTkToplevel):
         content = ctk.CTkScrollableFrame(self, fg_color="transparent")
         content.pack(fill="both", expand=True, padx=24, pady=16)
 
-        # -- LLM Sektion --
-        self._section_label(content, "LLM-Konfiguration")
+        # -- Provider Sektion --
+        self._section_label(content, "LLM-Provider")
 
-        ctk.CTkLabel(content, text="Modell", text_color=COLORS["text_secondary"],
+        ctk.CTkLabel(content, text="Provider", text_color=COLORS["text_secondary"],
                      font=ctk.CTkFont(size=12)).pack(anchor="w", pady=(8, 2))
-        self.model_entry = ctk.CTkEntry(content, height=36,
+
+        provider_display = {k: v["name"] for k, v in PROVIDERS.items()}
+        self._provider_keys = {v["name"]: k for k, v in PROVIDERS.items()}
+        provider_names = [PROVIDERS["openai"]["name"], PROVIDERS["claude"]["name"], PROVIDERS["openrouter"]["name"]]
+
+        current_provider = self._cfg["llm"].get("provider", "openrouter")
+        current_display = PROVIDERS.get(current_provider, {}).get("name", "OpenRouter (Debug/CLI)")
+
+        self.provider_menu = ctk.CTkOptionMenu(
+            content, values=provider_names,
+            fg_color=COLORS["bg_input"], button_color=COLORS["accent"],
+            button_hover_color=COLORS["accent_hover"],
+            command=self._on_provider_changed)
+        self.provider_menu.set(current_display)
+        self.provider_menu.pack(fill="x")
+
+        # API-Key
+        ctk.CTkLabel(content, text="API-Key", text_color=COLORS["text_secondary"],
+                     font=ctk.CTkFont(size=12)).pack(anchor="w", pady=(10, 2))
+        self.api_key_entry = ctk.CTkEntry(content, height=36,
+                                           fg_color=COLORS["bg_input"],
+                                           border_color=COLORS["border"],
+                                           show="*",
+                                           placeholder_text="API-Key eingeben...")
+        self.api_key_entry.pack(fill="x")
+
+        # Vorhandenen Key laden
+        import os
+        env_key = PROVIDERS.get(current_provider, {}).get("env_key", "")
+        existing = os.getenv(env_key, "")
+        if existing:
+            self.api_key_entry.insert(0, existing)
+
+        self.api_key_hint = ctk.CTkLabel(content, text="",
+                                          text_color=COLORS["text_muted"],
+                                          font=ctk.CTkFont(size=10))
+        self.api_key_hint.pack(anchor="w")
+        self._update_key_hint(current_provider)
+
+        # -- Modell Sektion --
+        self._section_label(content, "Modell")
+
+        ctk.CTkLabel(content, text="Modell auswaehlen", text_color=COLORS["text_secondary"],
+                     font=ctk.CTkFont(size=12)).pack(anchor="w", pady=(8, 2))
+
+        models = PROVIDERS.get(current_provider, {}).get("models", [])
+        self.model_menu = ctk.CTkOptionMenu(
+            content, values=models if models else [""],
+            fg_color=COLORS["bg_input"], button_color=COLORS["accent"],
+            button_hover_color=COLORS["accent_hover"])
+        current_model = self._cfg["llm"].get("model", "")
+        if current_model in models:
+            self.model_menu.set(current_model)
+        elif models:
+            self.model_menu.set(models[0])
+        self.model_menu.pack(fill="x")
+
+        # Oder manuell eingeben
+        ctk.CTkLabel(content, text="Oder manuell eingeben:",
+                     text_color=COLORS["text_muted"],
+                     font=ctk.CTkFont(size=10)).pack(anchor="w", pady=(6, 2))
+        self.model_entry = ctk.CTkEntry(content, height=32,
                                          fg_color=COLORS["bg_input"],
-                                         border_color=COLORS["border"])
-        self.model_entry.insert(0, self._cfg["llm"].get("model", ""))
+                                         border_color=COLORS["border"],
+                                         placeholder_text="z.B. gpt-4o-mini")
         self.model_entry.pack(fill="x")
 
+        # -- Parameter --
+        self._section_label(content, "Parameter")
+
         ctk.CTkLabel(content, text="Temperatur", text_color=COLORS["text_secondary"],
-                     font=ctk.CTkFont(size=12)).pack(anchor="w", pady=(12, 2))
+                     font=ctk.CTkFont(size=12)).pack(anchor="w", pady=(8, 2))
         self.temp_slider = ctk.CTkSlider(content, from_=0, to=2, number_of_steps=20,
                                           progress_color=COLORS["accent"],
                                           button_color=COLORS["accent"],
@@ -181,6 +248,31 @@ class SettingsDialog(ctk.CTkToplevel):
                       fg_color=COLORS["border"], hover_color=COLORS["text_muted"],
                       command=self.destroy).pack(side="right")
 
+    def _on_provider_changed(self, display_name: str):
+        """Provider gewechselt — Modell-Liste und Key-Hint aktualisieren."""
+        import os
+        provider_key = self._provider_keys.get(display_name, "openrouter")
+        models = self._providers.get(provider_key, {}).get("models", [])
+        self.model_menu.configure(values=models if models else [""])
+        if models:
+            self.model_menu.set(models[0])
+
+        # API-Key aktualisieren
+        env_key = self._providers.get(provider_key, {}).get("env_key", "")
+        existing = os.getenv(env_key, "")
+        self.api_key_entry.delete(0, "end")
+        if existing:
+            self.api_key_entry.insert(0, existing)
+        self._update_key_hint(provider_key)
+
+    def _update_key_hint(self, provider_key: str):
+        hints = {
+            "openai": "Env: OPENAI_API_KEY — von platform.openai.com/api-keys",
+            "claude": "Env: ANTHROPIC_API_KEY — von console.anthropic.com",
+            "openrouter": "Env: OPENROUTER_API_KEY — von openrouter.ai/keys (nur Debug/CLI)",
+        }
+        self.api_key_hint.configure(text=hints.get(provider_key, ""))
+
     @staticmethod
     def _section_label(parent, text):
         sep = ctk.CTkFrame(parent, fg_color=COLORS["border"], height=1)
@@ -189,12 +281,36 @@ class SettingsDialog(ctk.CTkToplevel):
                      text_color=COLORS["accent"]).pack(anchor="w")
 
     def _save(self):
-        self._cfg["llm"]["model"] = self.model_entry.get().strip()
+        import os
+        from pathlib import Path
+
+        # Provider
+        display_name = self.provider_menu.get()
+        provider_key = self._provider_keys.get(display_name, "openrouter")
+        self._cfg["llm"]["provider"] = provider_key
+
+        # Modell (manuell hat Vorrang)
+        manual_model = self.model_entry.get().strip()
+        if manual_model:
+            self._cfg["llm"]["model"] = manual_model
+        else:
+            self._cfg["llm"]["model"] = self.model_menu.get()
+
+        # Parameter
         self._cfg["llm"]["temperature"] = round(self.temp_slider.get(), 1)
         try:
             self._cfg["llm"]["max_tokens"] = int(self.tokens_entry.get())
         except ValueError:
             pass
+
+        # API-Key in .env speichern
+        api_key = self.api_key_entry.get().strip()
+        if api_key:
+            env_var = self._providers.get(provider_key, {}).get("env_key", "")
+            if env_var:
+                os.environ[env_var] = api_key
+                env_path = Path(__file__).parent / ".env"
+                self._update_env_file(env_path, env_var, api_key)
 
         ctk.set_appearance_mode(self.theme_var.get())
         save_config(self._cfg)
@@ -202,6 +318,20 @@ class SettingsDialog(ctk.CTkToplevel):
         if self._on_save:
             self._on_save(self._cfg)
         self.destroy()
+
+    @staticmethod
+    def _update_env_file(env_path: Path, key: str, value: str):
+        """Key in .env Datei setzen oder aktualisieren."""
+        import re
+        if env_path.is_file():
+            content = env_path.read_text(encoding="utf-8")
+            if key in content:
+                content = re.sub(rf"{key}=.*", f"{key}={value}", content)
+            else:
+                content += f"\n{key}={value}\n"
+            env_path.write_text(content, encoding="utf-8")
+        else:
+            env_path.write_text(f"{key}={value}\n", encoding="utf-8")
 
 
 # ---------------------------------------------------------------------------

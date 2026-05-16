@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 from scripts.config_manager import get_agent_config, get_llm_config
-from scripts.llm import get_client
+from scripts.llm import get_client, get_provider_name
 
 
 # ---------------------------------------------------------------------------
@@ -135,6 +135,23 @@ def get_tools_by_names(tool_names: list[str]) -> list[dict]:
     return [ALL_TOOLS[name] for name in tool_names if name in ALL_TOOLS]
 
 
+# ---------------------------------------------------------------------------
+# Claude Tool-Format Konvertierung
+# ---------------------------------------------------------------------------
+
+def _openai_tools_to_claude(tools: list[dict]) -> list[dict]:
+    """OpenAI-Tool-Format in Claude-Tool-Format konvertieren."""
+    claude_tools = []
+    for tool in tools:
+        func = tool["function"]
+        claude_tools.append({
+            "name": func["name"],
+            "description": func["description"],
+            "input_schema": func["parameters"],
+        })
+    return claude_tools
+
+
 class BaseAgent:
     """Basis-Agent mit Konversationsverlauf und Tool-Support."""
 
@@ -150,10 +167,11 @@ class BaseAgent:
         conversation_id: str = None,
     ):
         self.llm_config = get_llm_config()
-        self.client = get_client()
+        self.provider = self.llm_config.get("provider", "openrouter")
+        self.client = get_client(self.provider)
 
         # LLM-Overrides (Agent-spezifisch, sonst Defaults aus settings.yaml)
-        self.model = model or self.llm_config.get("model", "openai/gpt-4o")
+        self.model = model or self.llm_config.get("model", "gpt-4o-mini")
         self.temperature = temperature if temperature is not None else self.llm_config.get("temperature", 0.7)
         self.max_tokens = max_tokens or self.llm_config.get("max_tokens", 2048)
 
@@ -201,7 +219,17 @@ class BaseAgent:
         if stream is None:
             stream = self.llm_config.get("streaming", False)
 
-        # Loop fuer Tool-Calls
+        if self.provider == "claude":
+            return self._send_claude(messages, stream)
+        else:
+            return self._send_openai(messages, stream)
+
+    # -------------------------------------------------------------------
+    # OpenAI / OpenRouter
+    # -------------------------------------------------------------------
+
+    def _send_openai(self, messages: list[dict], stream: bool) -> str:
+        """Senden via OpenAI-kompatible API (mit Tool-Call-Loop)."""
         while True:
             kwargs = {
                 "model": self.model,
@@ -242,9 +270,110 @@ class BaseAgent:
                 continue
 
             text = choice.message.content or ""
-            if stream and text:
-                print(text, end="", flush=True)
-                print()
+            self.history.append({"role": "assistant", "content": text})
+            self._trim_history()
+            return text
+
+    # -------------------------------------------------------------------
+    # Claude (Anthropic)
+    # -------------------------------------------------------------------
+
+    def _send_claude(self, messages: list[dict], stream: bool) -> str:
+        """Senden via Anthropic Claude API (mit Tool-Call-Loop)."""
+        # System-Prompt extrahieren
+        system_prompt = ""
+        chat_messages = []
+        for msg in messages:
+            if msg["role"] == "system":
+                system_prompt += msg["content"] + "\n"
+            elif msg["role"] == "tool":
+                # Claude: tool_result statt tool
+                chat_messages.append({
+                    "role": "user",
+                    "content": [{
+                        "type": "tool_result",
+                        "tool_use_id": msg.get("tool_call_id", ""),
+                        "content": msg["content"],
+                    }],
+                })
+            else:
+                chat_messages.append(msg)
+
+        if not chat_messages:
+            chat_messages = [{"role": "user", "content": "Hallo"}]
+
+        claude_tools = _openai_tools_to_claude(self.tools) if self.tools else None
+
+        while True:
+            kwargs = {
+                "model": self.model,
+                "messages": chat_messages,
+                "temperature": self.temperature,
+                "max_tokens": self.max_tokens,
+            }
+            if system_prompt.strip():
+                kwargs["system"] = system_prompt.strip()
+            if claude_tools:
+                kwargs["tools"] = claude_tools
+
+            response = self.client.messages.create(**kwargs)
+
+            # Tool-Calls pruefen
+            tool_uses = [b for b in response.content if b.type == "tool_use"]
+            if tool_uses:
+                # Assistant-Message zum Verlauf hinzufuegen
+                assistant_content = []
+                for block in response.content:
+                    if block.type == "text":
+                        assistant_content.append({"type": "text", "text": block.text})
+                    elif block.type == "tool_use":
+                        assistant_content.append({
+                            "type": "tool_use",
+                            "id": block.id,
+                            "name": block.name,
+                            "input": block.input,
+                        })
+
+                chat_messages.append({"role": "assistant", "content": assistant_content})
+
+                # Tool-Ergebnisse sammeln
+                tool_results = []
+                for tool_use in tool_uses:
+                    args = tool_use.input
+                    result = execute_tool(tool_use.name, args)
+                    tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": tool_use.id,
+                        "content": result,
+                    })
+
+                chat_messages.append({"role": "user", "content": tool_results})
+
+                # History (im OpenAI-Format fuer Kompatibilitaet)
+                self.history.append({
+                    "role": "assistant",
+                    "content": None,
+                    "tool_calls": [
+                        {"id": tu.id, "type": "function",
+                         "function": {"name": tu.name, "arguments": json.dumps(tu.input)}}
+                        for tu in tool_uses
+                    ],
+                })
+                for tu in tool_uses:
+                    result = execute_tool(tu.name, tu.input)
+                    self.history.append({
+                        "role": "tool",
+                        "tool_call_id": tu.id,
+                        "content": result,
+                    })
+
+                continue
+
+            # Keine Tool-Calls: Text extrahieren
+            text = ""
+            for block in response.content:
+                if block.type == "text":
+                    text += block.text
 
             self.history.append({"role": "assistant", "content": text})
             self._trim_history()

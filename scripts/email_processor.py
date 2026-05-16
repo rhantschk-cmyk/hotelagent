@@ -3,8 +3,7 @@
 import json
 from rich.console import Console
 
-from scripts.config_manager import get_llm_config
-from scripts.llm import get_client
+from scripts.llm import llm_call
 from scripts.email_provider import get_provider
 
 console = Console()
@@ -16,18 +15,13 @@ console = Console()
 
 def _llm_call(system: str, user: str, temperature: float = 0.2) -> str:
     """Einfacher LLM-Aufruf mit System- und User-Prompt."""
-    client = get_client()
-    config = get_llm_config()
-    response = client.chat.completions.create(
-        model=config.get("model", "openai/gpt-4o"),
+    return llm_call(
         messages=[
             {"role": "system", "content": system},
             {"role": "user", "content": user},
         ],
         temperature=temperature,
-        max_tokens=config.get("max_tokens", 2048),
-    )
-    return response.choices[0].message.content.strip()
+    ).strip()
 
 
 # ---------------------------------------------------------------------------

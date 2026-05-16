@@ -4,8 +4,7 @@ import re
 from datetime import datetime
 from pathlib import Path
 
-from scripts.config_manager import get_llm_config
-from scripts.llm import get_client
+from scripts.llm import llm_call
 
 PROJECT_ROOT = Path(__file__).parent.parent
 PRICES_PATH = PROJECT_ROOT / "PRICES.md"
@@ -68,11 +67,7 @@ def extract_prices_from_text(text: str, source_name: str = "Unbekannt") -> str:
     if len(text) > max_chars:
         text = text[:max_chars] + "\n\n[... gekuerzt ...]"
 
-    client = get_client()
-    config = get_llm_config()
-
-    response = client.chat.completions.create(
-        model=config.get("model", "openai/gpt-4o"),
+    result = llm_call(
         messages=[
             {"role": "system", "content": EXTRACTION_PROMPT},
             {"role": "user", "content": text},
@@ -81,7 +76,7 @@ def extract_prices_from_text(text: str, source_name: str = "Unbekannt") -> str:
         max_tokens=4096,
     )
 
-    return response.choices[0].message.content.strip()
+    return result.strip()
 
 
 def save_to_prices(source_name: str, extracted_prices: str) -> None:
@@ -153,9 +148,6 @@ def calculate_price(query: str) -> str:
 
     rules_text = load_pricing_rules()
 
-    client = get_client()
-    config = get_llm_config()
-
     system = (
         "Du bist ein exakter Preisrechner fuer ein Hotel. Dir wird eine Preisdatenbank (PRICES.md), "
         "Berechnungsregeln und eine Anfrage gegeben.\n\n"
@@ -186,14 +178,11 @@ def calculate_price(query: str) -> str:
         user_parts.append(f"=== BERECHNUNGSREGELN ===\n{rules_text}")
     user_parts.append(f"=== ANFRAGE ===\n{query}")
 
-    response = client.chat.completions.create(
-        model=config.get("model", "openai/gpt-4o"),
+    return llm_call(
         messages=[
             {"role": "system", "content": system},
             {"role": "user", "content": "\n\n".join(user_parts)},
         ],
         temperature=0.0,
         max_tokens=2048,
-    )
-
-    return response.choices[0].message.content.strip()
+    ).strip()
