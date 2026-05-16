@@ -137,10 +137,17 @@ class SettingsDialog(ctk.CTkToplevel):
 
         provider_display = {k: v["name"] for k, v in PROVIDERS.items()}
         self._provider_keys = {v["name"]: k for k, v in PROVIDERS.items()}
-        provider_names = [PROVIDERS["openai"]["name"], PROVIDERS["claude"]["name"], PROVIDERS["openrouter"]["name"]]
+        # OpenRouter nur sichtbar wenn via CLI freigeschaltet
+        from scripts.llm import is_openrouter_unlocked
+        provider_names = [PROVIDERS["openai"]["name"], PROVIDERS["claude"]["name"]]
+        if is_openrouter_unlocked():
+            provider_names.append(PROVIDERS["openrouter"]["name"])
 
-        current_provider = self._cfg["llm"].get("provider", "openrouter")
-        current_display = PROVIDERS.get(current_provider, {}).get("name", "OpenRouter (Debug/CLI)")
+        current_provider = self._cfg["llm"].get("provider", "openai")
+        # Falls openrouter gesetzt aber gesperrt, auf openai zurueckfallen
+        if current_provider == "openrouter" and not is_openrouter_unlocked():
+            current_provider = "openai"
+        current_display = PROVIDERS.get(current_provider, {}).get("name", "OpenAI API")
 
         self.provider_menu = ctk.CTkOptionMenu(
             content, values=provider_names,

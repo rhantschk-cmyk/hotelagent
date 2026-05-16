@@ -3,17 +3,17 @@ agent:
   max_history: 50
   system_prompt_path: config/system_prompt.txt
 email:
-  provider: gmail_oauth
-  preset: ''
   imap:
+    drafts_folder: Drafts
     host: ''
+    password: ''
     port: 993
     smtp_host: ''
     smtp_port: 587
-    username: ''
-    password: ''
     ssl: true
-    drafts_folder: Drafts
+    username: ''
+  preset: ''
+  provider: gmail_oauth
 email_processing:
   min_template_year: 2025
   template_label: Vorlagen
@@ -22,9 +22,9 @@ gmail:
   default_sender: null
   token_path: config/token.json
 llm:
-  provider: openrouter
   max_tokens: 2048
   model: deepseek/deepseek-v4-flash
+  provider: openrouter
   streaming: true
   temperature: 0.7
 logging:

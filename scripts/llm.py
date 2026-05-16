@@ -1,6 +1,7 @@
 """HotelAgent — LLM-Client: Multi-Provider (OpenAI, Claude, OpenRouter debug)."""
 
 import os
+from pathlib import Path
 from scripts.config_manager import get_llm_config
 
 
@@ -46,10 +47,30 @@ PROVIDERS = {
 }
 
 
+UNLOCK_FILE = Path(__file__).parent.parent / "data" / ".openrouter_unlocked"
+
+
+def is_openrouter_unlocked() -> bool:
+    """Pruefen ob OpenRouter via CLI freigeschaltet wurde."""
+    return UNLOCK_FILE.is_file()
+
+
+def unlock_openrouter():
+    """OpenRouter freischalten (Debug-Modus)."""
+    UNLOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
+    UNLOCK_FILE.write_text("1", encoding="utf-8")
+
+
+def lock_openrouter():
+    """OpenRouter wieder sperren."""
+    if UNLOCK_FILE.is_file():
+        UNLOCK_FILE.unlink()
+
+
 def get_provider_name() -> str:
     """Aktuellen Provider-Namen zurueckgeben."""
     config = get_llm_config()
-    return config.get("provider", "openrouter")
+    return config.get("provider", "openai")
 
 
 def get_provider_display_name() -> str:

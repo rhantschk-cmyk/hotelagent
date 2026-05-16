@@ -784,5 +784,24 @@ def scheduler():
     start(background=False)
 
 
+@app.command()
+def debug_provider(
+    action: str = typer.Argument("status", help="status / unlock / lock"),
+):
+    """OpenRouter Debug-Provider freischalten oder sperren."""
+    from scripts.llm import is_openrouter_unlocked, unlock_openrouter, lock_openrouter
+
+    if action == "unlock":
+        unlock_openrouter()
+        console.print("[green]OpenRouter freigeschaltet.[/green] In den GUI-Einstellungen jetzt verfuegbar.")
+    elif action == "lock":
+        lock_openrouter()
+        console.print("[yellow]OpenRouter gesperrt.[/yellow] Nur noch OpenAI und Claude in der GUI verfuegbar.")
+    else:
+        status = "freigeschaltet" if is_openrouter_unlocked() else "gesperrt"
+        console.print(f"OpenRouter: [bold]{status}[/bold]")
+        console.print("[dim]Verwende 'python main.py debug-provider unlock' zum Freischalten.[/dim]")
+
+
 if __name__ == "__main__":
     app()

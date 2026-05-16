@@ -1,0 +1,15 @@
+{
+  "id": "hotel_agent_20260516_110802",
+  "updated_at": "2026-05-16T11:08:15.086575",
+  "messages": [
+    {
+      "role": "user",
+      "content": "hallo?"
+    },
+    {
+      "role": "assistant",
+      "content": "Hallo! 👋\n\nHerzlich willkommen im **Fasten-, Wellness & Sporthotel Ödhof**! Mein Name ist Alex, Ihr digitaler Assistent. Wie kann ich Ihnen heute behilflich sein?\n\nHaben Sie Fragen zu:\n- **Zimmern & Preisen**?\n- **Arrangements** (Fasten, Tennis, Wellness)?\n- **Buchungen**?\n- Oder möchten Sie einfach nur allgemeine Informationen zum Hotel?\n\nIch bin ganz Ohr! 😊"
+    }
+  ],
+  "created_at": "2026-05-16T11:08:15.086575"
+}
